@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>mysql/mysql performance | wishes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="##1.查询表的所属以及有多少行SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_NAME&#x3D;’PRODUCT’; ##2.查看当前应用连接，连接数突增排查 SELECT user,SUBSTRING_INDEX(HOST,’:’,1) as ip, count(*) as cou">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mysql&#x2F;mysql performance">
+<meta property="og:url" content="http://yoursite.com/2020/07/21/mysql/mysql%20performance/index.html">
+<meta property="og:site_name" content="wishes">
+<meta property="og:description" content="##1.查询表的所属以及有多少行SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_NAME&#x3D;’PRODUCT’; ##2.查看当前应用连接，连接数突增排查 SELECT user,SUBSTRING_INDEX(HOST,’:’,1) as ip, count(*) as cou">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-07-21T08:54:35.233Z">
+<meta property="article:modified_time" content="2020-07-21T08:54:35.233Z">
+<meta property="article:author" content="matrix">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="wishes" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">wishes</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-mysql/mysql performance" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/07/21/mysql/mysql%20performance/" class="article-date">
+  <time datetime="2020-07-21T08:54:35.233Z" itemprop="datePublished">2020-07-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      mysql/mysql performance
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>##1.查询表的所属以及有多少行<br>SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_ROWS FROM information_schema.<code>TABLES</code> WHERE TABLE_NAME=’PRODUCT’;</p>
+<p>##2.查看当前应用连接，连接数突增排查</p>
+<p>SELECT user,SUBSTRING_INDEX(HOST,’:’,1) as ip, count(*) as count, db<br>FROM information_schema.<code>PROCESSLIST</code><br>WHERE <code>HOST</code> NOT IN (‘localhost’) AND <code>USER</code> NOT IN(‘replicater’)<br>GROUP BY ip ORDER BY count;</p>
+<p>##3.查看表碎片，是否需要整理表释放物理空间<br>SELECT TABLE_NAME,TABLE_ROWS ,concat(ROUND(DATA_LENGTH/1024/1024,2),’MB’) AS size, DATA_FREE/1024/1024 AS DATA_FREE_MB<br>FROM information_schema.<code>TABLES</code><br>WHERE TABLE_SCHEMA=’db库名’<br>ORDER BY DATA_LENGTH DESC;</p>
+<p>##4.当前有没有锁<br>SELECT * FROM information_schema.INNODB_LOCKS;</p>
+<p>##5.当前锁堵塞情况<br>SELECT * FROM information_schema.INNODB_LOCK_WAITS;</p>
+<p>##6.当前锁等待详细信息<br>select it.trx_mysql_thread_id, il.lock_id, il.lock_table, il.lock_mode, il.lock_type, it.trx_state, pl.USER||’@’||pl.HOST as user_host, pl.db, pl.command, pl.info, it.trx_started, it.trx_wait_started, now()-trx_wait_started as wait_seconds, il.lock_index, it.trx_weight, it.trx_rows_locked, it.trx_rows_modified<br>from information_schema.INNODB_TRX it,information_schema.innodb_locks il,information_schema.processlist pl<br>where it.trx_id = il.lock_trx_id and it.trx_mysql_thread_id = pl.id;</p>
+<p>##7.最近一次死锁、未提交事物、CHECKPIONT、BUFFER POOL等<br>show engine innodb status;</p>
+<p>##8.过滤无用线程信息可用pager<br>show processlist;</p>
+<p>##9.查看当前运行的详细SQL<br>SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST WHERE info is not null;</p>
+<p>##10.查看某条sql各阶段执行时间，可开启profiling功能<br>set global profiling=on;</p>
+<p>##11.查看用户信息<br>select user,host,password from mysql.user group by user;</p>
+<p>##12.分表时批量生成sql语句<br>select concat(“select IP as “,TABLE_NAME,” from “,TABLE_SCHEMA,”.”,TABLE_NAME,” group by id;”)<br>from information_schema.TABLES<br>where TABLE_NAME like ‘table_%’;</p>
+<p>##13.查看哪些sql执行最多<br>SELECT SCHEMA_NAME,DIGEST_TEXT,COUNT_STAR,SUM_ROWS_SENT,SUM_ROWS_EXAMINED,FIRST_SEEN,LAST_SEEN<br>FROM performance_schema.events_statements_summary_by_digest<br>where SCHEMA_NAME is not null and SCHEMA_NAME !=’information_schema’<br>ORDER BY COUNT_STAR desc LIMIT 1;</p>
+<p>##14.哪个SQL平均响应时间最多<br>SELECT SCHEMA_NAME,DIGEST_TEXT,COUNT_STAR,AVG_TIMER_WAIT,SUM_ROWS_SENT,SUM_ROWS_EXAMINED,FIRST_SEEN,LAST_SEEN<br>FROM performance_schema.events_statements_summary_by_digest<br>where SCHEMA_NAME is not null and SCHEMA_NAME !=’information_schema’<br>ORDER BY AVG_TIMER_WAIT desc LIMIT 1;</p>
+<p>##15.哪个SQL扫描的行数最多(IO消耗)<br>SELECT SCHEMA_NAME,DIGEST_TEXT,COUNT_STAR,AVG_TIMER_WAIT,SUM_ROWS_SENT,SUM_ROWS_EXAMINED,FIRST_SEEN,LAST_SEEN<br>FROM performance_schema.events_statements_summary_by_digest<br>where SCHEMA_NAME is not null and SCHEMA_NAME !=’information_schema’<br>ORDER BY SUM_ROWS_EXAMINED desc LIMIT 1;</p>
+<p>##16.哪个SQL使用的临时表最多<br>SELECT SCHEMA_NAME,DIGEST_TEXT,SUM_CREATED_TMP_DISK_TABLES,SUM_CREATED_TMP_TABLES,FIRST_SEEN,LAST_SEEN<br>FROM performance_schema.events_statements_summary_by_digest<br>where SCHEMA_NAME is not null and SCHEMA_NAME !=’information_schema’<br>ORDER BY SUM_CREATED_TMP_DISK_TABLES desc LIMIT 1;</p>
+<p>##17.哪个SQL返回的结果集最多(net消耗)<br>SELECT SCHEMA_NAME,DIGEST_TEXT,COUNT_STAR,SUM_ROWS_SENT,SUM_ROWS_SENT,FIRST_SEEN,LAST_SEEN<br>FROM performance_schema.events_statements_summary_by_digest<br>where SCHEMA_NAME is not null and SCHEMA_NAME !=’information_schema’<br>ORDER BY SUM_ROWS_SENT desc LIMIT 1;</p>
+<p>##18.哪个SQL排序数最多(CPU消耗)<br>SELECT SCHEMA_NAME,DIGEST_TEXT,COUNT_STAR,SUM_ROWS_SENT,SUM_SORT_ROWS,FIRST_SEEN,LAST_SEEN<br>FROM performance_schema.events_statements_summary_by_digest<br>where SCHEMA_NAME is not null and SCHEMA_NAME !=’information_schema’<br>ORDER BY SUM_SORT_ROWS desc LIMIT 5;</p>
+<p>#19.哪个表、文件逻辑IO最多（热数据）<br>SELECT FILE_NAME,EVENT_NAME,COUNT_READ,SUM_NUMBER_OF_BYTES_READ,COUNT_WRITE,SUM_NUMBER_OF_BYTES_WRITE<br>FROM performance_schema.file_summary_by_instance<br>ORDER BY SUM_NUMBER_OF_BYTES_READ+SUM_NUMBER_OF_BYTES_WRITE DESC LIMIT 2;</p>
+<p>##20.哪个索引使用最多<br>SELECT OBJECT_NAME, INDEX_NAME, COUNT_FETCH, COUNT_INSERT, COUNT_UPDATE, COUNT_DELETE<br>FROM performance_schema.table_io_waits_summary_by_index_usage<br>ORDER BY SUM_TIMER_WAIT DESC limit 1;</p>
+<p>##21.哪个索引没有使用过<br>SELECT OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME<br>FROM performance_schema.table_io_waits_summary_by_index_usage<br>WHERE INDEX_NAME IS NOT NULL AND COUNT_STAR = 0 AND OBJECT_SCHEMA &lt;&gt; ‘mysql’<br>ORDER BY OBJECT_SCHEMA,OBJECT_NAME;</p>
+<p>##22.哪个等待事件消耗的时间最多<br>SELECT EVENT_NAME, COUNT_STAR, SUM_TIMER_WAIT, AVG_TIMER_WAIT<br>FROM events_waits_summary_global_by_event_name<br>WHERE event_name != ‘idle’<br>ORDER BY SUM_TIMER_WAIT DESC LIMIT 1;</p>
+<p>##23.通过performance_schema库得到数据库运行的统计信息，更好分析定位问题和完善监控信息<br>#打开标准的innodb监控：<br>CREATE TABLE innodb_monitor (a INT) ENGINE=INNODB;<br>#打开innodb的锁监控：<br>CREATE TABLE innodb_lock_monitor (a INT) ENGINE=INNODB;<br>#打开innodb表空间监控：<br>CREATE TABLE innodb_tablespace_monitor (a INT) ENGINE=INNODB;<br>#打开innodb表监控：<br>CREATE TABLE innodb_table_monitor (a INT) ENGINE=INNODB;</p>
+<p>##24.添加主键<br>alter table xxx add constraint primary key(id); </p>
+<p>##25.删除外键<br>alter table test drop foreign key FK_XXX;</p>
+<p>##26.QPS<br>SHOW GLOBAL STATUS LIKE ‘Questions’;<br>SHOW GLOBAL STATUS LIKE ‘Uptime’;</p>
+<p>#27.TPS<br>SHOW GLOBAL STATUS LIKE ‘Com_commit’;<br>SHOW GLOBAL STATUS LIKE ‘Com_rollback’;<br>SHOW GLOBAL STATUS LIKE ‘Uptime’;<br>(Com_commit + Com_rollback)/Uptime</p>
+<p>##28.<br>select table_name,table_rows,concat(round(DATA_LENGTH/1024/1024, 2), ‘MB’) as size,DATA_FREE/1024/1024 AS data_free_MB<br>from information_schema.TABLES<br>where table_schema=’库名’<br>order by DATA_LENGTH desc;</p>
+<p>##29.清理binlog<br>PURGE BINARY LOGS TO ‘XXX’;<br>PURGE BINARY LOGS BEFORE ‘2018-06-10 00:00:00’; </p>
+<p>##30.外键隔离级别等信息<br>select @@FOREIGN_KEY_CHECKS;<br>select @@global.tx_isolation,@@tx_isolation;<br>select @@character_set_database;<br>select @@GLOBAL.sql_mode;</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2020/07/21/mysql/mysql%20performance/" data-id="ckcvpm59l0003ykso184n1s84" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2020/07/21/mysql/Partitioning%20in%20Mysql/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">mysql/Partitioning in Mysql</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">July 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/07/21/mysql/mysql%20performance/">mysql/mysql performance</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/21/mysql/Partitioning%20in%20Mysql/">mysql/Partitioning in Mysql</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/16/Data%20Integration%20perspective%20in%20the%20PDI%20client/">Data Integration perspective in the PDI client</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/14/httpclient/">httpclient</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/14/hello-world/">Hello World</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 matrix<br>
+      Powered by <a href="https://liuaoz.github.io/" target="_blank">matrix</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>
